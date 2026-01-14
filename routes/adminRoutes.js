@@ -1,6 +1,7 @@
 import express from 'express';
 import mongoose from 'mongoose';
 import "../models/Categoria.js"
+import "../models/Postagem.js"
 
 //TODO
 //Adicionar connect-flash e substituir res.render por res.redirect
@@ -8,6 +9,7 @@ import "../models/Categoria.js"
 
 const router = express.Router();
 const Categoria = mongoose.model("categorias");
+const Postagem = mongoose.model("postagens")
 
 router.get('/', (req, res) => {
     res.render('admin/index');
@@ -65,7 +67,7 @@ router.post('/categoria/nova', async (req, res) => {
 
             await new Categoria(novaCategoria).save();
             res.status(201);
-            res.redirect('admin/categorias', { success: "Categoria criada com sucesso" })
+            res.redirect('/admin/categorias')
 
         } catch (error) {
             res.render("/admin/addcategoria", { e: "Erro ao criar categoria. Tente novamente" })
@@ -97,7 +99,7 @@ router.get("/categorias/editar/:id", async (req, res) => {
 router.post("/categoria/edit", async (req, res) => {
     try {
         const { nome, slug, id } = req.body;
-    
+
         const categoriaEditada = await Categoria.findById(id);
 
         categoriaEditada.nome = nome;
@@ -123,6 +125,109 @@ router.post("/categoria/deletar", async (req, res) => {
         res.redirect("/admin/categorias");
     } catch (error) {
         res.redirect("/admin/categorias");
+    }
+})
+
+router.get("/postagens", async (req, res) => {
+    try {
+        const postagens = await Postagem.find().populate("categoria").sort({ data: "desc" });
+        res.render("admin/postagens", { postagens: postagens });
+    } catch (error) {
+        res.status(500).redirect("/admin");
+    }
+})
+
+
+router.get("/postagens/add", async (req, res) => {
+    try {
+        const categoriasExistentes = await Categoria.find();
+        res.render("admin/addpostagens", {
+            categoriasExistentes
+        })
+    } catch (error) {
+        res.redirect("/admin")
+    }
+})
+
+
+router.post("/postagem/nova", async (req, res) => {
+
+    const { titulo, slug, descricao, conteudo, categoria } = req.body;
+
+    var erros = [];
+
+    if (erros.length > 0) {
+        res.render("admin/addpostagens", { erros, erros })
+    } else {
+        try {
+            const novaPostagem = {
+                titulo: titulo,
+                slug: slug,
+                descricao: descricao,
+                conteudo: conteudo,
+                categoria: categoria
+            }
+
+            await new Postagem(novaPostagem).save();
+            res.redirect('/admin/postagens');
+            res.status(201);
+        } catch (error) {
+            res.status(500);
+        }
+    }
+
+})
+
+
+router.get("/postagem/editar/:id", async (req, res) => {
+    try {
+
+        const postagem = await Postagem.findById(req.params.id)
+            .populate("categoria");
+
+        const categorias = await Categoria.find();
+
+        res.render("admin/editarpostagem", {
+            postagem,
+            categorias
+        });
+
+    } catch (error) {
+        console.log(error);
+    }
+
+})
+
+
+
+router.post("/postagem/editar", async (req, res) => {
+    try {
+        const { categoria, conteudo, titulo, descricao, slug, id } = req.body;
+
+        const postagemEditada = await Postagem.findById(id);
+        
+        postagemEditada.titulo = titulo;
+        postagemEditada.conteudo = conteudo;
+        postagemEditada.categoria = categoria;
+        postagemEditada.descricao = descricao;
+        postagemEditada.slug = slug;
+
+        await postagemEditada.save();
+
+        res.redirect("/admin/postagens");
+    } catch (error) {
+        console.log(error);
+        res.redirect("/admin/postagens");
+    }
+})
+
+router.post("/postagem/deletar", async (req, res) => {
+    try {
+        const { id } = req.body;
+        await Postagem.findByIdAndDelete(id);
+        res.redirect("/admin/postagens");
+    } catch (error) {
+        res.redirect("/admin/postagens");
     }
 })
 

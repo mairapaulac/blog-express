@@ -42,6 +42,11 @@ app.use('/bootstrap', express.static('node_modules/bootstrap/dist'))
 app.use('/admin', adminRoutes);
 
 
+app.get('/', (req, res) => {
+    res.render("index");
+})
+
+
 app.listen(process.env.PORT, () => {
     console.log("Servidor rodando em http://localhost/8081");
 })
