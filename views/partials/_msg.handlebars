@@ -1,11 +1,11 @@
-{{#if e}}
-  <div class="alert alert-danger" role="alert">
-    {{e}}
+{{#if error_msg}}
+  <div class="alert alert-danger">
+    {{error_msg.[0]}}
   </div>
 {{/if}}
 
-{{#if success}}
-  <div class="alert alert-success" role="alert">
-   {{success}}
+{{#if success_msg}}
+  <div class="alert alert-success">
+    {{success_msg.[0]}}
   </div>
 {{/if}}

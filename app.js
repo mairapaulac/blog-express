@@ -3,19 +3,32 @@ import session from 'express-session';
 import mongoose from 'mongoose';
 import flash from 'connect-flash'
 import handlebars from 'express-handlebars';
+import passport from 'passport';
 import { config } from 'dotenv';
-import router from './routes/adminRoutes.js';
+import adminRouter from './routes/adminRoutes.js';
+import userRouter from './routes/userRoutes.js';
 import connDB from './database.js';
+import configurarPassport from './config/auth.js';
 import "./models/Postagem.js"
 import "./models/Categoria.js"
 
 const app = express();
-const adminRoutes = router;
+const admin = adminRouter;
+const usuarios = userRouter;
 const Postagem = mongoose.model("postagens");
 const Categoria = mongoose.model("categorias");
 config();
 connDB();
 
+
+//Chama um grupo de rotas
+app.use('/admin', admin);
+app.use('/usuarios', usuarios);
+
+app.use(passport.initialize());
+app.use(passport.session());
+
+configurarPassport();
 
 app.use(session({
     secret: process.env.SECRET,
@@ -51,8 +64,7 @@ app.set('view engine', 'handlebars');
 app.use('/bootstrap', express.static('node_modules/bootstrap/dist'))
 
 
-//Chamar grupo de rotas
-app.use('/admin', adminRoutes);
+
 
 
 app.get('/', async (req, res) => {
@@ -102,35 +114,34 @@ app.get("/categorias", async (req, res) => {
 })
 
 app.get("/categorias/:slug", async (req, res) => {
-    try {
-        const categoria = await Categoria.findOne({ slug: req.params.slug });
+  try {
+    const categoria = await Categoria.findOne({ slug: req.params.slug });
 
-        if (!categoria) {
-            req.flash("error_msg", "Categoria não encontrada");
-            return res.redirect("/categorias");
-        }
-
-        const postagens = await Postagem.find({ categoria: categoria._id });
-
-        if (postagens.length === 0) {
-            req.flash("success_msg", "Nenhuma postagem nessa categoria ainda");
-        }
-
-        res.render("categorias/postagens", {
-            postagens,
-            categoria
-        });
-
-    } catch (error) {
-        console.error(error);
-        req.flash("error_msg", "Erro ao carregar a categoria");
-        res.redirect("/");
+    if (!categoria) {
+      req.flash("error_msg", "Categoria não encontrada");
+      return res.redirect("/");
     }
+
+    const postagens = await Postagem.find({ categoria: categoria._id });
+
+    res.render("categorias/postagens", {
+      postagens,
+      categoria
+    });
+
+  } catch (error) {
+    console.error(error);
+    req.flash("error_msg", "Erro ao carregar a categoria");
+    res.redirect("/");
+  }
 });
 
 app.get('/404', (req, res) => {
     res.render("404");
 })
+
+
+
 
 
 app.listen(process.env.PORT, () => {
