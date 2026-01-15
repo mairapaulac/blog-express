@@ -22,16 +22,13 @@ router.get('/posts', (req, res) => {
 router.get('/categorias', async (req, res) => {
     try {
         const categorias = await Categoria.find();
-        res.render("admin/categorias", {
-            categorias
-        });
+        res.render("admin/categorias", { categorias });
     } catch (error) {
         console.error(error);
-        res.status(500).render("admin/categorias", {
-            e: "Erro ao listar categorias"
-        });
+        req.flash("error_msg", "Erro ao listar categorias");
+        res.redirect("/admin");
     }
-})
+});
 
 
 router.get('/categorias/add', (req, res) => {
@@ -39,45 +36,32 @@ router.get('/categorias/add', (req, res) => {
 })
 
 router.post('/categoria/nova', async (req, res) => {
-
     const { nome, slug } = req.body;
+    const erros = [];
 
-    var erros = [];
-
-    if (!nome || typeof nome == undefined || nome == null) {
-        erros.push(({ text: "Nome inválido" }));
+    if (!nome || nome.length < 2) {
+        erros.push({ text: "Nome inválido" });
     }
 
-    if (!slug || typeof slug == undefined || slug == null) {
+    if (!slug) {
         erros.push({ text: "Slug inválido" });
     }
 
-    if (nome.length < 2) {
-        erros.push({ text: "Nome da categoria muito pequeno" });
-    }
-
     if (erros.length > 0) {
-        res.render("admin/addcategoria", { erros: erros });
-    } else {
-        try {
-            const novaCategoria = {
-                nome: nome,
-                slug: slug //fazem referencia aos nomes presentes nos campos do formulario
-            };
-
-            await new Categoria(novaCategoria).save();
-            res.status(201);
-            res.redirect('/admin/categorias')
-
-        } catch (error) {
-            res.render("/admin/addcategoria", { e: "Erro ao criar categoria. Tente novamente" })
-            res.status(400).json(error.message);
-        }
-
+        return res.render("admin/addcategoria", { erros });
     }
 
+    try {
+        await new Categoria({ nome, slug }).save();
+        req.flash("success_msg", "Categoria criada com sucesso");
+        res.redirect('/admin/categorias');
+    } catch (error) {
+        console.error(error);
+        req.flash("error_msg", "Erro ao criar categoria");
+        res.redirect('/admin/categorias');
+    }
+});
 
-})
 
 router.get("/categorias/editar/:id", async (req, res) => {
 
@@ -100,33 +84,34 @@ router.post("/categoria/edit", async (req, res) => {
     try {
         const { nome, slug, id } = req.body;
 
-        const categoriaEditada = await Categoria.findById(id);
+        const categoria = await Categoria.findById(id);
+        categoria.nome = nome;
+        categoria.slug = slug;
 
-        categoriaEditada.nome = nome;
-        categoriaEditada.slug = slug;
+        await categoria.save();
 
-        await categoriaEditada.save();
+        req.flash("success_msg", "Categoria editada com sucesso");
+        res.redirect("/admin/categorias");
 
-        res.status(200).render("admin/categorias", {
-            success: "Categoria editada com sucesso"
-        });
     } catch (error) {
-        res.status(500).render("admin/categorias", {
-            e: "Houve um erro ao editar a categoria"
-        });
+        console.error(error);
+        req.flash("error_msg", "Erro ao editar categoria");
+        res.redirect("/admin/categorias");
     }
-})
+});
 
 
 router.post("/categoria/deletar", async (req, res) => {
     try {
-        const { id } = req.body;
-        await Categoria.findByIdAndDelete(id);
-        res.redirect("/admin/categorias");
+        await Categoria.findByIdAndDelete(req.body.id);
+        req.flash("success_msg", "Categoria removida com sucesso");
     } catch (error) {
-        res.redirect("/admin/categorias");
+        req.flash("error_msg", "Erro ao remover categoria");
     }
-})
+
+    res.redirect("/admin/categorias");
+});
+
 
 router.get("/postagens", async (req, res) => {
     try {
@@ -151,32 +136,17 @@ router.get("/postagens/add", async (req, res) => {
 
 
 router.post("/postagem/nova", async (req, res) => {
-
-    const { titulo, slug, descricao, conteudo, categoria } = req.body;
-
-    var erros = [];
-
-    if (erros.length > 0) {
-        res.render("admin/addpostagens", { erros, erros })
-    } else {
-        try {
-            const novaPostagem = {
-                titulo: titulo,
-                slug: slug,
-                descricao: descricao,
-                conteudo: conteudo,
-                categoria: categoria
-            }
-
-            await new Postagem(novaPostagem).save();
-            res.redirect('/admin/postagens');
-            res.status(201);
-        } catch (error) {
-            res.status(500);
-        }
+    try {
+        await new Postagem(req.body).save();
+        req.flash("success_msg", "Postagem criada com sucesso");
+        res.redirect('/admin/postagens');
+    } catch (error) {
+        console.error(error);
+        req.flash("error_msg", "Erro ao criar postagem");
+        res.redirect('/admin/postagens');
     }
+});
 
-})
 
 
 router.get("/postagem/editar/:id", async (req, res) => {
@@ -199,13 +169,12 @@ router.get("/postagem/editar/:id", async (req, res) => {
 })
 
 
-
 router.post("/postagem/editar", async (req, res) => {
     try {
         const { categoria, conteudo, titulo, descricao, slug, id } = req.body;
 
         const postagemEditada = await Postagem.findById(id);
-        
+
         postagemEditada.titulo = titulo;
         postagemEditada.conteudo = conteudo;
         postagemEditada.categoria = categoria;
@@ -214,21 +183,25 @@ router.post("/postagem/editar", async (req, res) => {
 
         await postagemEditada.save();
 
+        req.flash("success_msg", "Postagem editada com sucesso");
         res.redirect("/admin/postagens");
+
     } catch (error) {
-        console.log(error);
+        console.error(error);
+        req.flash("error_msg", "Erro ao editar postagem");
         res.redirect("/admin/postagens");
     }
-})
+});
 
 router.post("/postagem/deletar", async (req, res) => {
     try {
-        const { id } = req.body;
-        await Postagem.findByIdAndDelete(id);
-        res.redirect("/admin/postagens");
+        await Postagem.findByIdAndDelete(req.body.id);
+        req.flash("success_msg", "Postagem removida com sucesso");
     } catch (error) {
-        res.redirect("/admin/postagens");
+        req.flash("error_msg", "Erro ao remover postagem");
     }
-})
+
+    res.redirect("/admin/postagens");
+});
 
 export default router;

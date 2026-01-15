@@ -1,15 +1,18 @@
 import express from 'express';
 import session from 'express-session';
 import mongoose from 'mongoose';
+import flash from 'connect-flash'
 import handlebars from 'express-handlebars';
 import { config } from 'dotenv';
 import router from './routes/adminRoutes.js';
 import connDB from './database.js';
 import "./models/Postagem.js"
+import "./models/Categoria.js"
 
 const app = express();
 const adminRoutes = router;
 const Postagem = mongoose.model("postagens");
+const Categoria = mongoose.model("categorias");
 config();
 connDB();
 
@@ -20,6 +23,13 @@ app.use(session({
     saveUninitialized: true
 }));
 
+app.use(flash());
+
+app.use((req, res, next) => {
+    res.locals.success_msg = req.flash("success_msg");
+    res.locals.error_msg = req.flash("error_msg");
+    next();
+});
 
 //Analisa corpos de requisição
 app.use(express.json());
@@ -47,27 +57,76 @@ app.use('/admin', adminRoutes);
 
 app.get('/', async (req, res) => {
     try {
-        const postagens = await Postagem.find().populate("categoria").sort({ data: "desc" });
-        res.render("index", { postagens: postagens }); //passando para nossas views
+        const postagens = await Postagem
+            .find()
+            .populate("categoria")
+            .sort({ data: "desc" });
+
+        res.render("index", { postagens });
     } catch (error) {
-       res.redirect("/404");
+        console.error(error);
+        req.flash("error_msg", "Erro ao carregar postagens");
+        res.redirect("/404");
     }
-})
+});
 
 app.get("/postagem/:slug", async (req, res) => {
     try {
-        const postagem = await Postagem.find({slug: req.params.slug});
+        const postagem = await Postagem.findOne({ slug: req.params.slug });
 
-        if(postagem) 
-            res.render("postagem/index", { postagem: postagem });
-        
+        if (!postagem) {
+            req.flash("error_msg", "Postagem não encontrada");
+            return res.redirect("/");
+        }
+
+        res.render("postagem/index", { postagem });
 
     } catch (error) {
-        //add flash message pra erros
+        console.error(error);
+        req.flash("error_msg", "Erro ao carregar a postagem");
         res.redirect("/");
     }
-    
+});
+
+
+app.get("/categorias", async (req, res) => {
+
+    try {
+        const categorias = await Categoria.find();
+        res.render("categorias/index", { categorias: categorias });
+    } catch (error) {
+        req.flash("error_msg", "Erro ao carregar categorias");
+        res.redirect("/");
+    }
+
 })
+
+app.get("/categorias/:slug", async (req, res) => {
+    try {
+        const categoria = await Categoria.findOne({ slug: req.params.slug });
+
+        if (!categoria) {
+            req.flash("error_msg", "Categoria não encontrada");
+            return res.redirect("/categorias");
+        }
+
+        const postagens = await Postagem.find({ categoria: categoria._id });
+
+        if (postagens.length === 0) {
+            req.flash("success_msg", "Nenhuma postagem nessa categoria ainda");
+        }
+
+        res.render("categorias/postagens", {
+            postagens,
+            categoria
+        });
+
+    } catch (error) {
+        console.error(error);
+        req.flash("error_msg", "Erro ao carregar a categoria");
+        res.redirect("/");
+    }
+});
 
 app.get('/404', (req, res) => {
     res.render("404");
