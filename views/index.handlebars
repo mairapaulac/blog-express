@@ -3,11 +3,26 @@
     <h1 class="display-5 fw-bold">Bem-vindo(a) ao Blog Express</h1>
     <p class="col-md-8 fs-4">Esse blog foi feito como parte dos meus estudos de
       node.js + express atravé do canal Victor Lima, no ano de 2026</p>
-    <hr class="my-4">
+    <hr class="my-4" />
     <button class="btn btn-primary btn-lg" type="button">Criar uma conta</button>
   </div>
 </div>
 
-<hr>
+<hr />
 
 <h2>Postagens recentes</h2>
+
+{{#each postagens}}
+  <div class="card mt-4">
+    <div class="card-body">
+      <h3>{{titulo}}</h3>
+      <p>{{descricao}}</p>
+      <a href="/postagem/{{slug}}"><button class="btn btn-success">Leia mais</button></a>
+      <hr>
+      <small>Categoria: {{categoria.nome}}</small>
+      <small>Data de publicação: {{data}}</small>
+    </div>
+  </div>
+{{else}}
+  <h5>Nenhuma postagem registrada!</h5>
+{{/each}}
