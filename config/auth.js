@@ -9,7 +9,7 @@ const User = mongoose.model('users');
 export default function configurarPassport() {
     passport.use(
         new LocalStrategy(
-            { usernameField: 'email' },
+            { usernameField: 'email', passwordField: 'senha' },
             async (email, senha, done) => {
                 try {
                     const usuario = await User.findOne({ email });
